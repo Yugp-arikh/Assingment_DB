@@ -1,0 +1,47 @@
+<%- include('partials/cdn') %>
+
+<div class="container mt-4">
+    <h2>Helpdesk Tickets</h2>
+    <% if (user.role === 'Helpdesk Operator') { %>
+        <a href="/tickets/new" class="btn btn-primary mb-3">Create New Ticket</a>
+    <% } %>
+
+    <table class="table table-striped mt-3">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>User</th>
+                <th>Equipment</th>
+                <th>Issue</th>
+                <th>Status</th>
+                <% if (user.role === 'IT Technician') { %><th>Actions</th><% } %>
+                <% if (user.role === 'Office Manager') { %><th>Delete</th><% } %>
+            </tr>
+        </thead>
+        <tbody>
+            <% tickets.forEach(ticket => { %>
+                <tr>
+                    <td><%= ticket.id %></td>
+                    <td><%= ticket.user_name %></td>
+                    <td><%= ticket.serial_number %></td>
+                    <td><%= ticket.issue_description %></td>
+                    <td class="fw-bold text-<%= ticket.status === 'Open' ? 'danger' : ticket.status === 'In Progress' ? 'warning' : 'success' %>">
+                        <%= ticket.status %>
+                    </td>
+                    <% if (user.role === 'IT Technician') { %>
+                        <td>
+                            <form action="/tickets/update/<%= ticket.id %>" method="POST">
+                                <select name="status" class="form-select">
+                                    <option value="Open" <% if (ticket.status === 'Open') { %>selected<% } %>>Open</option>
+                                    <option value="In Progress" <% if (ticket.status === 'In Progress') { %>selected<% } %>>In Progress</option>
+                                    <option value="Closed" <% if (ticket.status === 'Closed') { %>selected<% } %>>Closed</option>
+                                </select>
+                                <button type="submit" class="btn btn-sm btn-warning mt-1">Update</button>
+                            </form> 
+                        </td>
+                    <% } %>
+                </tr>
+            <% }) %>
+        </tbody>
+    </table>
+</div>

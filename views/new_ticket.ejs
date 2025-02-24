@@ -1,0 +1,29 @@
+<%- include('partials/cdn') %>
+
+<div class="container d-flex justify-content-center align-items-center vh-100">
+    <div class="card shadow-lg p-4" style="width: 500px;">
+        <h3 class="text-center">Create New Ticket</h3>
+        <form action="/tickets/new" method="POST">
+            <div class="mb-3">
+                <label for="equipment_id" class="form-label">Select Equipment</label>
+                <select id="equipment_id" name="equipment_id" class="form-select" required>
+                    <% if (equipment && equipment.length > 0) { %>
+                        <% equipment.forEach(equip => { %>
+                            <option value="<%= equip.id %>">
+                                <%= equip.serial_number %> - <%= equip.make %> <%= equip.model %>
+                            </option>
+                        <% }) %>
+                    <% } else { %>
+                        <option disabled>No Equipment Available</option>
+                    <% } %>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="issue_description" class="form-label">Issue Description</label>
+                <textarea id="issue_description" name="issue_description" class="form-control" rows="4" placeholder="Describe the issue..." required></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Submit Ticket</button>
+            <a href="/tickets" class="btn btn-secondary w-100 mt-2">Cancel</a>
+        </form>
+    </div>
+</div>
