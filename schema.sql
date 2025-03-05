@@ -20,6 +20,17 @@ CREATE TABLE equipment (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+--create office table
+CREATE TABLE office(
+    id SERIAL PRIMARY KEY,
+    office_name VARCHAR(100) NOT NULL,
+    address VARCHAR(100) UNIQUE NOT NULL,
+    contact VARCHAR(10) UNIQUE NOT NULL
+);
+
+-- User Office Relation
+ALTER TABLE users ADD COLUMN office_id INT REFERENCES office(id) ON DELETE SET NULL;
+
 
 -- Tickets Table
 CREATE TABLE tickets (
@@ -30,3 +41,5 @@ CREATE TABLE tickets (
     status VARCHAR(50) CHECK (status IN ('Open', 'In Progress', 'Closed')) DEFAULT 'Open',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE tickets ADD COLUMN resolution_description TEXT;

@@ -1,0 +1,36 @@
+<%- include('partials/cdn') %>
+
+<div class="container mt-4">
+    <h2>Ticket Reports</h2>
+
+    <table class="table table-bordered mt-3">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>User</th>
+                <th>Equipment</th>
+                <th>Issue Description</th>
+                <th>Status</th>
+                <th>Start Date</th>
+                <th>Closed Date</th>
+                <th>Resolution Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% reports.forEach(report => { %>
+                <tr>
+                    <td><%= report.id %></td>
+                    <td><%= report.user_name %></td>
+                    <td><%= report.serial_number %></td>
+                    <td><%= report.issue_description %></td>
+                    <td class="fw-bold text-<%= report.status === 'Open' ? 'danger' : report.status === 'In Progress' ? 'warning' : 'success' %>">
+                        <%= report.status %>
+                    </td>
+                    <td><%= new Date(report.created_at).toLocaleDateString() %></td>
+                    <td><%= report.closed_at ? new Date(report.closed_at).toLocaleDateString() : 'N/A' %></td>
+                    <td><%= report.resolution_description || 'N/A' %></td>
+                </tr>
+            <% }) %>
+        </tbody>
+    </table>
+</div>

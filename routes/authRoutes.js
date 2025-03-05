@@ -8,20 +8,30 @@ module.exports = (pool) => {
     router.get('/login', (req, res) => res.render('login'));
 
     // Register Page
-    router.get('/register', (req, res) => res.render('register'));
+    router.get('/register', async (req, res) => {
+        const offices = await pool.query('SELECT * FROM office'); // Fetch office list for registration
+        res.render('register', { errors: [], offices: offices.rows });
+    });
+    
 
     // Register User
     router.post('/register', async (req, res) => {
-        const { name, email, password, password2, role } = req.body;
+        const { name, email, password, password2, role, office_id } = req.body;
         let errors = [];
 
         if (password !== password2) errors.push({ msg: "Passwords do not match" });
 
-        if (errors.length > 0) return res.render('register', { errors, name, email, role });
+        if (errors.length > 0) {
+            const offices = await pool.query('SELECT * FROM office');
+            return res.render('register', { errors, name, email, role, offices: offices.rows });
+        }
 
         try {
             const hash = await bcrypt.hash(password, 10);
-            await pool.query('INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4)', [name, email, hash, role]);
+            await pool.query(
+                'INSERT INTO users (name, email, password, role, office_id) VALUES ($1, $2, $3, $4, $5)',
+                [name, email, hash, role, office_id || null]
+            );
             req.flash('success_msg', 'You are registered and can log in');
             res.redirect('/login');
         } catch (err) {
@@ -37,10 +47,27 @@ module.exports = (pool) => {
         failureFlash: true
     }));
 
-    // Dashboard
-    router.get('/dashboard', (req, res) => {
+    // Dashboard Route
+    router.get('/dashboard', async (req, res) => {
         if (!req.isAuthenticated()) return res.redirect('/login');
-        res.render('dashboard', { user: req.user });
+
+        try {
+            const result = await pool.query(
+                `SELECT users.*, office.office_name, office.address, office.contact 
+                FROM users 
+                LEFT JOIN office ON users.office_id = office.id 
+                WHERE users.id = $1`,
+                [req.user.id]
+            );
+
+            const userWithOffice = result.rows[0];
+
+            res.render('dashboard', { user: userWithOffice });
+        } catch (err) {
+            console.error(err);
+            req.flash('error_msg', 'Error fetching dashboard data');
+            res.redirect('/login');
+        }
     });
 
     // Logout Handle
@@ -50,12 +77,6 @@ module.exports = (pool) => {
             res.redirect('/login');
         });
     });
-
-    router.get('/dashboard', (req, res) => {
-        if (!req.isAuthenticated()) return res.redirect('/login');
-        res.render('dashboard', { user: req.user });
-    });
-    
 
     return router;
 };
