@@ -96,32 +96,121 @@ module.exports = (pool) => {
 
     // View Reports (Office Manager only)
     router.get('/reports', async (req, res) => {
-        if (!req.isAuthenticated() || !req.user || req.user.role !== 'Office Manager') {
+        if (!req.isAuthenticated() || req.user.role !== 'Office Manager') {
             req.flash('error_msg', 'Not authorized');
             return res.redirect('/dashboard');
         }
-
+    
         try {
-            const result = await pool.query(`
-                SELECT tickets.*, 
-                       users.name AS user_name, 
-                       equipment.serial_number,
-                       TO_CHAR(tickets.created_at, 'YYYY-MM-DD') AS start_date,
-                       TO_CHAR(tickets.closed_at, 'YYYY-MM-DD') AS closed_date
+            // Fetch all tickets for the detailed report
+           // Fetch all tickets for the detailed report
+const detailedResult = await pool.query(
+    `SELECT tickets.*, 
+           users.name AS user_name, 
+           equipment.serial_number,
+           TO_CHAR(tickets.created_at, 'YYYY-MM-DD') AS start_date,
+           TO_CHAR(tickets.closed_at, 'YYYY-MM-DD') AS closed_date
+    FROM tickets
+    LEFT JOIN users ON tickets.user_id = users.id
+    LEFT JOIN equipment ON tickets.equipment_id = equipment.id
+    ORDER BY tickets.created_at DESC`
+);
+            // Fetch summary report for each month
+            const summaryResult = await pool.query(
+                `SELECT 
+                        TO_CHAR(created_at, 'YYYY-MM') AS month,
+                        COUNT(*) AS total_tickets,
+                        SUM(CASE WHEN status = 'Open' THEN 1 ELSE 0 END) AS open_tickets,
+                        SUM(CASE WHEN status = 'Closed' THEN 1 ELSE 0 END) AS closed_tickets,
+                        AVG(EXTRACT(EPOCH FROM (closed_at - created_at)) / 3600) AS avg_resolution_time
                 FROM tickets
-                LEFT JOIN users ON tickets.user_id = users.id
-                LEFT JOIN equipment ON tickets.equipment_id = equipment.id
-                ORDER BY tickets.created_at DESC
-            `);
-
-            res.render('reports', { reports: result.rows, user: res.locals.user });
+                WHERE status = 'Closed'
+                GROUP BY month
+                ORDER BY month DESC`
+            );
+    
+            // Fetch technician summary
+            const technicianSummaryResult = await pool.query(
+                `SELECT users.name AS technician_name, COUNT(*) AS total_jobs,
+                        SUM(CASE WHEN tickets.status = 'Open' THEN 1 ELSE 0 END) AS open_cases,
+                        SUM(CASE WHEN tickets.status = 'Closed' THEN 1 ELSE 0 END) AS closed_cases,
+                        AVG(EXTRACT(EPOCH FROM (tickets.closed_at - tickets.created_at)) / 3600) AS avg_hours_per_job
+                FROM tickets
+                JOIN users ON tickets.user_id = users.id
+                WHERE users.role = 'IT Technician'
+                GROUP BY technician_name
+                ORDER BY total_jobs DESC`
+            );
+    
+            // Fetch office summary
+            const officeSummaryResult = await pool.query(
+                `SELECT offices.name AS office_name, COUNT(*) FILTER (WHERE equipment.type = 'Hardware') AS hardware_faults,
+                        COUNT(*) FILTER (WHERE equipment.type = 'Software') AS software_faults,
+                        SUM(EXTRACT(EPOCH FROM (tickets.closed_at - tickets.created_at))) / 3600 AS total_hours_spent,
+                        COUNT(DISTINCT tickets.user_id) AS unique_technicians
+                FROM tickets
+                JOIN equipment ON tickets.equipment_id = equipment.id
+                JOIN offices ON equipment.office_id = offices.id
+                GROUP BY office_name
+                ORDER BY total_hours_spent DESC`
+            );
+    
+            // Fetch equipment summary
+            const equipmentSummaryResult = await pool.query(
+                `SELECT equipment.serial_number, equipment.make, equipment.model, COUNT(*) AS total_jobs,
+                        SUM(CASE WHEN tickets.status = 'Open' THEN 1 ELSE 0 END) AS open_cases,
+                        SUM(CASE WHEN tickets.status = 'Closed' THEN 1 ELSE 0 END) AS closed_cases
+                FROM tickets
+                JOIN equipment ON tickets.equipment_id = equipment.id
+                GROUP BY serial_number, make, model
+                ORDER BY total_jobs DESC`
+            );
+    
+            // Fetch technician-specific report
+            const technicianSpecificResult = await pool.query(
+                `SELECT users.name AS technician_name, offices.name AS office_name, tickets.id AS job_number, equipment.serial_number AS equipment,
+                        COUNT(*) FILTER (WHERE tickets.status = 'Open') AS open_jobs,
+                        COUNT(*) FILTER (WHERE tickets.status = 'Closed') AS closed_jobs,
+                        SUM(EXTRACT(EPOCH FROM (tickets.closed_at - tickets.created_at))) / 3600 AS total_hours_spent,
+                        AVG(EXTRACT(EPOCH FROM (tickets.closed_at - tickets.created_at)) / 3600) AS avg_hours_per_job
+                FROM tickets
+                JOIN users ON tickets.user_id = users.id
+                JOIN equipment ON tickets.equipment_id = equipment.id
+                JOIN offices ON equipment.office_id = offices.id
+                WHERE users.role = 'IT Technician'
+                GROUP BY technician_name, office_name, job_number, equipment
+                ORDER BY total_hours_spent DESC`
+            );
+    
+            // Fetch office-specific report
+            const officeSpecificResult = await pool.query(
+                `SELECT offices.name AS office_name, COUNT(*) FILTER (WHERE tickets.status = 'Open') AS open_jobs,
+                        COUNT(*) FILTER (WHERE tickets.status = 'Closed') AS closed_jobs,
+                        COUNT(DISTINCT equipment.serial_number) AS jobs_per_register_item
+                FROM tickets
+                JOIN equipment ON tickets.equipment_id = equipment.id
+                JOIN offices ON equipment.office_id = offices.id
+                GROUP BY office_name
+                ORDER BY jobs_per_register_item DESC`
+            );
+    
+            res.render('reports', {
+                reports: detailedResult.rows,
+                summary: summaryResult.rows,
+                technicianSummary: technicianSummaryResult.rows,
+                officeSummary: officeSummaryResult.rows,
+                equipmentSummary: equipmentSummaryResult.rows,
+                technicianSpecific: technicianSpecificResult.rows,
+                officeSpecific: officeSpecificResult.rows,
+                user: req.user
+            });
         } catch (err) {
             console.error("Error fetching reports:", err);
             req.flash('error_msg', 'Error fetching reports.');
             res.redirect('/dashboard');
         }
     });
-
+    
     // Delete Ticket (Office Manager only)
     router.post('/delete/:id', async (req, res) => {
         if (!req.isAuthenticated() || !req.user || req.user.role !== 'Office Manager') {

@@ -33,4 +33,159 @@
             <% }) %>
         </tbody>
     </table>
+
+    <h3 class="mt-5">Summary Report</h3>
+    <table class="table table-bordered mt-3">
+        <thead class="table-dark">
+            <tr>
+                <th>Month</th>
+                <th>Total Tickets</th>
+                <th>Open Tickets</th>
+                <th>Closed Tickets</th>
+                <th>Total Time Spent (Hours)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% summary.forEach(row => { %>
+                <tr>
+                    <td><%= row.month %></td>
+                    <td><%= row.total_tickets %></td>
+                    <td class="text-danger fw-bold"><%= row.open_tickets %></td>
+                    <td class="text-success fw-bold"><%= row.closed_tickets %></td>
+                    <td><%= row.total_hours_spent !== null ? Number(row.total_hours_spent).toFixed(2) : 'N/A' %></td>
+                </tr>
+            <% }) %>
+        </tbody>
+    </table>
+
+    <!-- Technician Summary -->
+    <h3 class="mt-5">Technician Summary</h3>
+    <table class="table table-bordered mt-3">
+        <thead class="table-dark">
+            <tr>
+                <th>Technician Name</th>
+                <th>Total Jobs</th>
+                <th>Open Cases</th>
+                <th>Closed Cases</th>
+                <th>Total Hours Spent</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% technicianSummary.forEach(row => { %>
+                <tr>
+                    <td><%= row.technician_name %></td>
+                    <td><%= row.total_jobs %></td>
+                    <td class="text-danger fw-bold"><%= row.open_cases %></td>
+                    <td class="text-success fw-bold"><%= row.closed_cases %></td>
+                    <td><%= row.total_hours_spent !== null ? Number(row.total_hours_spent).toFixed(2) : 'N/A' %></td>
+                </tr>
+            <% }) %>
+        </tbody>
+    </table>
+
+    <!-- Office Summary -->
+    <h3 class="mt-5">Office Summary</h3>
+    <table class="table table-bordered mt-3">
+        <thead class="table-dark">
+            <tr>
+                <th>Office Name</th>
+                <th>Hardware Faults</th>
+                <th>Software Faults</th>
+                <th>Total Hours Spent</th>
+                <th>Unique Technicians</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% officeSummary.forEach(row => { %>
+                <tr>
+                    <td><%= row.office_name %></td>
+                    <td><%= row.hardware_faults %></td>
+                    <td><%= row.software_faults %></td>
+                    <td><%= row.total_hours_spent !== null ? Number(row.total_hours_spent).toFixed(2) : 'N/A' %></td>
+                    <td><%= row.unique_technicians %></td>
+                </tr>
+            <% }) %>
+        </tbody>
+    </table>
+
+    <!-- Equipment Summary -->
+    <h3 class="mt-5">Equipment Summary</h3>
+    <table class="table table-bordered mt-3">
+        <thead class="table-dark">
+            <tr>
+                <th>Serial Number</th>
+                <th>Make</th>
+                <th>Model</th>
+                <th>Total Jobs</th>
+                <th>Open Cases</th>
+                <th>Closed Cases</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% equipmentSummary.forEach(row => { %>
+                <tr>
+                    <td><%= row.serial_number %></td>
+                    <td><%= row.make %></td>
+                    <td><%= row.model %></td>
+                    <td><%= row.total_jobs %></td>
+                    <td class="text-danger fw-bold"><%= row.open_cases %></td>
+                    <td class="text-success fw-bold"><%= row.closed_cases %></td>
+                </tr>
+            <% }) %>
+        </tbody>
+    </table>
+
+    <!-- Technician-Specific Report -->
+    <h3 class="mt-5">Technician-Specific Report</h3>
+    <table class="table table-bordered mt-3">
+        <thead class="table-dark">
+            <tr>
+                <th>Technician</th>
+                <th>Office</th>
+                <th>Job Number</th>
+                <th>Equipment</th>
+                <th>Open Jobs</th>
+                <th>Closed Jobs</th>
+                <th>Total Time Spent</th>
+                <th>Average Time Per Job</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% technicianSpecific.forEach(row => { %>
+                <tr>
+                    <td><%= row.technician_name %></td>
+                    <td><%= row.office_name %></td>
+                    <td><%= row.job_number %></td>
+                    <td><%= row.equipment %></td>
+                    <td class="text-danger fw-bold"><%= row.open_jobs %></td>
+                    <td class="text-success fw-bold"><%= row.closed_jobs %></td>
+                    <td><%= row.total_hours_spent !== null ? Number(row.total_hours_spent).toFixed(2) : 'N/A' %></td>
+                    <td><%= row.avg_hours_per_job !== null ? Number(row.avg_hours_per_job).toFixed(2) : 'N/A' %></td>
+                </tr>
+            <% }) %>
+        </tbody>
+    </table>
+
+    <!-- Office-Specific Report -->
+    <h3 class="mt-5">Office-Specific Report</h3>
+    <table class="table table-bordered mt-3">
+        <thead class="table-dark">
+            <tr>
+                <th>Office</th>
+                <th>Open Jobs</th>
+                <th>Closed Jobs</th>
+                <th>Jobs per Register Item</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% officeSpecific.forEach(row => { %>
+                <tr>
+                    <td><%= row.office_name %></td>
+                    <td class="text-danger fw-bold"><%= row.open_jobs %></td>
+                    <td class="text-success fw-bold"><%= row.closed_jobs %></td>
+                    <td><%= row.jobs_per_register_item %></td>
+                </tr>
+            <% }) %>
+        </tbody>
+    </table>
 </div>
