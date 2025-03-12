@@ -131,30 +131,38 @@ const detailedResult = await pool.query(
     
             // Fetch technician summary
             const technicianSummaryResult = await pool.query(
-                `SELECT users.name AS technician_name, COUNT(*) AS total_jobs,
-                        SUM(CASE WHEN tickets.status = 'Open' THEN 1 ELSE 0 END) AS open_cases,
-                        SUM(CASE WHEN tickets.status = 'Closed' THEN 1 ELSE 0 END) AS closed_cases,
-                        AVG(EXTRACT(EPOCH FROM (tickets.closed_at - tickets.created_at)) / 3600) AS avg_hours_per_job
-                FROM tickets
-                JOIN users ON tickets.user_id = users.id
-                WHERE users.role = 'IT Technician'
-                GROUP BY technician_name
-                ORDER BY total_jobs DESC`
+                `SELECT
+                     users.name AS technician_name,
+                     COUNT(tickets.id) AS total_jobs,
+                     COUNT(CASE WHEN tickets.status = 'Open' THEN 1 ELSE NULL END) AS open_cases,
+                     COUNT(CASE WHEN tickets.status = 'Closed' THEN 1 ELSE NULL END) AS closed_cases,
+                     ROUND(AVG(EXTRACT(EPOCH FROM (tickets.closed_at - tickets.created_at)) / 3600), 2) AS avg_hours_per_job
+                 FROM users
+                          LEFT JOIN assignments ON users.id = assignments.technician_id
+                          LEFT JOIN tickets ON assignments.ticket_id = tickets.id
+                 WHERE users.role = 'IT Technician'
+                 GROUP BY users.id
+                 ORDER BY total_jobs DESC NULLS LAST`
             );
+
     
             // Fetch office summary
             const officeSummaryResult = await pool.query(
-                `SELECT offices.name AS office_name, COUNT(*) FILTER (WHERE equipment.type = 'Hardware') AS hardware_faults,
-                        COUNT(*) FILTER (WHERE equipment.type = 'Software') AS software_faults,
-                        SUM(EXTRACT(EPOCH FROM (tickets.closed_at - tickets.created_at))) / 3600 AS total_hours_spent,
-                        COUNT(DISTINCT tickets.user_id) AS unique_technicians
-                FROM tickets
-                JOIN equipment ON tickets.equipment_id = equipment.id
-                JOIN offices ON equipment.office_id = offices.id
-                GROUP BY office_name
-                ORDER BY total_hours_spent DESC`
+                `SELECT
+                     office.office_name AS office_name,
+                     COUNT(tickets.id) FILTER (WHERE equipment.type = 'Hardware') AS hardware_faults,
+                         COUNT(tickets.id) FILTER (WHERE equipment.type = 'Software') AS software_faults,
+                         ROUND(SUM(EXTRACT(EPOCH FROM (tickets.closed_at - tickets.created_at))) / 3600, 2) AS total_hours_spent,
+                     COUNT(DISTINCT assignments.technician_id) AS unique_technicians
+                 FROM office
+                          LEFT JOIN equipment ON office.id = equipment.office_id
+                          LEFT JOIN tickets ON equipment.id = tickets.equipment_id
+                          LEFT JOIN assignments ON tickets.id = assignments.ticket_id
+                 GROUP BY office.id
+                 ORDER BY total_hours_spent DESC NULLS LAST`
             );
-    
+
+
             // Fetch equipment summary
             const equipmentSummaryResult = await pool.query(
                 `SELECT equipment.serial_number, equipment.make, equipment.model, COUNT(*) AS total_jobs,
@@ -168,31 +176,38 @@ const detailedResult = await pool.query(
     
             // Fetch technician-specific report
             const technicianSpecificResult = await pool.query(
-                `SELECT users.name AS technician_name, offices.name AS office_name, tickets.id AS job_number, equipment.serial_number AS equipment,
-                        COUNT(*) FILTER (WHERE tickets.status = 'Open') AS open_jobs,
-                        COUNT(*) FILTER (WHERE tickets.status = 'Closed') AS closed_jobs,
-                        SUM(EXTRACT(EPOCH FROM (tickets.closed_at - tickets.created_at))) / 3600 AS total_hours_spent,
-                        AVG(EXTRACT(EPOCH FROM (tickets.closed_at - tickets.created_at)) / 3600) AS avg_hours_per_job
-                FROM tickets
-                JOIN users ON tickets.user_id = users.id
-                JOIN equipment ON tickets.equipment_id = equipment.id
-                JOIN offices ON equipment.office_id = offices.id
-                WHERE users.role = 'IT Technician'
-                GROUP BY technician_name, office_name, job_number, equipment
-                ORDER BY total_hours_spent DESC`
+                `SELECT
+                     users.name AS technician_name,
+                     offices.name AS office_name,
+                     COALESCE(tickets.id, 0) AS job_number, -- Avoid invalid input
+                     equipment.serial_number AS equipment,
+                     COUNT(*) FILTER (WHERE tickets.status = 'Open') AS open_jobs,
+                         COUNT(*) FILTER (WHERE tickets.status = 'Closed') AS closed_jobs,
+                         SUM(EXTRACT(EPOCH FROM (tickets.closed_at - tickets.created_at))) / 3600 AS total_hours_spent,
+                     AVG(EXTRACT(EPOCH FROM (tickets.closed_at - tickets.created_at)) / 3600) AS avg_hours_per_job
+                 FROM tickets
+                          RIGHT JOIN users ON tickets.user_id = users.id
+                          LEFT JOIN equipment ON tickets.equipment_id = equipment.id
+                          LEFT JOIN offices ON equipment.office_id = offices.id
+                 WHERE users.role = 'IT Technician'
+                 GROUP BY technician_name, office_name, job_number, equipment
+                 ORDER BY total_hours_spent DESC;
+                `
             );
-    
+
             // Fetch office-specific report
             const officeSpecificResult = await pool.query(
-                `SELECT offices.name AS office_name, COUNT(*) FILTER (WHERE tickets.status = 'Open') AS open_jobs,
-                        COUNT(*) FILTER (WHERE tickets.status = 'Closed') AS closed_jobs,
-                        COUNT(DISTINCT equipment.serial_number) AS jobs_per_register_item
-                FROM tickets
-                JOIN equipment ON tickets.equipment_id = equipment.id
-                JOIN offices ON equipment.office_id = offices.id
-                GROUP BY office_name
-                ORDER BY jobs_per_register_item DESC`
+                `SELECT office.office_name AS office_name,
+                        COUNT(*) FILTER (WHERE tickets.status = 'Open') AS open_jobs,
+                         COUNT(*) FILTER (WHERE tickets.status = 'Closed') AS closed_jobs,
+                         COUNT(DISTINCT equipment.serial_number) AS jobs_per_register_item
+                 FROM tickets
+                          JOIN equipment ON tickets.equipment_id = equipment.id
+                          JOIN office ON equipment.office_id = office.id
+                 GROUP BY office.office_name
+                 ORDER BY jobs_per_register_item DESC`
             );
+
     
             res.render('reports', {
                 reports: detailedResult.rows,

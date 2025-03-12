@@ -20,7 +20,7 @@ CREATE TABLE tickets (
     CHECK (status IN ('Open', 'In Progress', 'Closed'))
 );
 
-CREATE TABLE offices (
+CREATE TABLE office (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     address TEXT NOT NULL,
